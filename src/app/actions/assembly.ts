@@ -1,7 +1,7 @@
 "use server";
 import Papa from "papaparse";
 import { ActionError, changed, optStr, requireStr, runAction, str, unwrap, type ActionContext, type ActionResult } from "@/lib/action";
-import { provisionAccount } from "@/lib/accounts";
+import { accessMessage, provisionAccount } from "@/lib/accounts";
 
 function needManage(ctx: ActionContext) {
   if (!ctx.session.can("manage_representatives")) throw new ActionError("Nu ai dreptul să administrezi Adunarea Generală.");
@@ -13,15 +13,17 @@ export async function addRepresentativeAction(fd: FormData): Promise<ActionResul
     const class_id = requireStr(fd, "class_id", "Clasa reprezentată");
     const email = optStr(fd, "email")?.toLowerCase() ?? null;
     const invite = str(fd, "invite") === "on";
-    if (invite && !email) throw new ActionError("Pentru a trimite invitația, completează adresa de e-mail.");
+    const password = str(fd, "password");
+    if (invite && !email) throw new ActionError("Pentru a crea contul, completează adresa de e-mail.");
+    if (invite && password.length < 8) throw new ActionError("Parola inițială trebuie să aibă cel puțin 8 caractere.");
     const row = unwrap(await ctx.supabase.from("representatives").insert({
       full_name, class_id, position: optStr(fd, "position") ?? "Reprezentant", email, notes: optStr(fd, "notes"),
       mandate_start: optStr(fd, "mandate_start") ?? new Date().toISOString().slice(0, 10),
     }).select("id").single()) as { id: string };
     if (invite && email) {
-      const { profileId } = await provisionAccount(ctx, email, full_name, "reprezentant", "email");
+      const { profileId, emailed } = await provisionAccount(ctx, email, full_name, "reprezentant", password);
       unwrap(await ctx.supabase.from("representatives").update({ profile_id: profileId, invited_at: new Date().toISOString() }).eq("id", row.id).select("id"));
-      return { ok: true, message: `Reprezentantul a fost adăugat, iar invitația a fost trimisă la ${email}.` };
+      return { ok: true, message: `Reprezentantul a fost adăugat. ${accessMessage(email, emailed)}` };
     }
     return { ok: true, message: "Reprezentantul a fost adăugat în Adunarea Generală." };
   });
@@ -52,14 +54,14 @@ export async function setRepresentativeStatusAction(id: string, status: "active"
   });
 }
 
-export async function inviteRepresentativeAction(id: string, mode: "email" | "link"): Promise<ActionResult<{ link: string | null }>> {
-  return runAction<{ link: string | null }>(async (ctx) => {
+export async function inviteRepresentativeAction(id: string, fd: FormData): Promise<ActionResult> {
+  return runAction(async (ctx) => {
     needManage(ctx);
     const rep = unwrap(await ctx.supabase.from("representatives").select("full_name,email,profile_id").eq("id", id).single()) as { full_name: string; email: string | null; profile_id: string | null };
     if (!rep.email) throw new ActionError("Reprezentantul nu are adresă de e-mail. Editează-l și adaug-o mai întâi.");
-    const { profileId, link } = await provisionAccount(ctx, rep.email.toLowerCase(), rep.full_name, "reprezentant", mode);
+    const { profileId, emailed } = await provisionAccount(ctx, rep.email.toLowerCase(), rep.full_name, "reprezentant", str(fd, "password"));
     changed(await ctx.supabase.from("representatives").update({ profile_id: profileId, invited_at: new Date().toISOString() }).eq("id", id).select("id"));
-    return { ok: true, message: mode === "email" ? `Invitația a fost trimisă la ${rep.email}.` : "Link generat. Trimite-l reprezentantului.", data: { link } };
+    return { ok: true, message: accessMessage(rep.email, emailed) };
   });
 }
 

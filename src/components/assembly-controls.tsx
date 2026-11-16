@@ -4,7 +4,6 @@ import { ModalForm } from "@/components/modal";
 import { ConfirmAction, ActionButton } from "@/components/confirm-action";
 import { Alert, Button, Checkbox, Field, Input, Select, Textarea } from "@/components/ui";
 import { Modal } from "@/components/modal";
-import { useToast } from "@/components/toast";
 import * as A from "@/app/actions/assembly";
 import type { ClassRow } from "@/lib/types";
 
@@ -30,7 +29,8 @@ export function AddRepButton({ classes }: { classes: ClassRow[] }) {
     <ModalForm trigger="Adaugă reprezentant" title="Adaugă un elev reprezentant" action={A.addRepresentativeAction} submitLabel="Adaugă" wide>
       {classes.length === 0 && <Alert tone="warn">Nu există clase. Adaugă mai întâi clasele din butonul „Clase”.</Alert>}
       <RepFields classes={classes} />
-      <Checkbox name="invite" label="Trimite invitația pentru crearea contului (necesită adresa de e-mail)" />
+      <Checkbox name="invite" label="Creează contul de acces acum (necesită adresa de e-mail și parola de mai jos)" />
+      <Field label="Parola inițială" htmlFor="rep-pw" hint="Minim 8 caractere. Reprezentantul o primește pe e-mail și o poate schimba din Setări."><Input id="rep-pw" name="password" type="text" autoComplete="off" minLength={8} /></Field>
     </ModalForm>
   );
 }
@@ -75,8 +75,6 @@ export function RepRowActions({ rep, classes, canInvite }: {
   rep: { id: string; full_name: string; class_id: string; position: string; email: string | null; mandate_start: string; notes: string | null; status: string; profile_id: string | null };
   classes: ClassRow[]; canInvite: boolean;
 }) {
-  const toast = useToast();
-  const [link, setLink] = useState<string | null>(null);
   return (
     <div className="flex flex-wrap items-center gap-1">
       <ModalForm trigger="Modifică" triggerVariant="ghost" triggerSize="sm" title={`Modifică: ${rep.full_name}`} wide action={A.updateRepresentativeAction.bind(null, rep.id)}
@@ -84,13 +82,10 @@ export function RepRowActions({ rep, classes, canInvite }: {
         <RepFields classes={classes} v={rep} />
       </ModalForm>
       {canInvite && rep.status === "active" && rep.email && (
-        <ActionButton size="sm" variant="ghost" action={() => A.inviteRepresentativeAction(rep.id, "email")}>{rep.profile_id ? "Retrimite acces" : "Invită"}</ActionButton>
-      )}
-      {canInvite && rep.status === "active" && rep.email && (
-        <Button size="sm" variant="ghost" onClick={async () => {
-          const r = await A.inviteRepresentativeAction(rep.id, "link");
-          if (r.ok) setLink(r.data?.link ?? null); else toast.error(r.error);
-        }}>Link de activare</Button>
+        <ModalForm trigger={rep.profile_id ? "Resetează parola" : "Creează cont"} triggerVariant="ghost" triggerSize="sm" title={`Acces pentru ${rep.full_name}`} submitLabel="Salvează și trimite e-mail"
+          description={`Setează parola inițială. Datele de acces se trimit la ${rep.email}, iar reprezentantul își poate schimba parola din Setări.`} action={A.inviteRepresentativeAction.bind(null, rep.id)}>
+          <Field label="Parola inițială" htmlFor={`pw-${rep.id}`} hint="Minim 8 caractere."><Input id={`pw-${rep.id}`} name="password" type="text" autoComplete="off" minLength={8} required /></Field>
+        </ModalForm>
       )}
       {rep.status === "active"
         ? <>
@@ -100,10 +95,6 @@ export function RepRowActions({ rep, classes, canInvite }: {
               description={`${rep.full_name} este eliminat din Adunarea Generală. Participările și măsurile administrative rămân în istoric.`}>Elimină</ConfirmAction>
           </>
         : <ActionButton size="sm" variant="ghost" action={A.setRepresentativeStatusAction.bind(null, rep.id, "active")}>Reactivează</ActionButton>}
-      <Modal open={!!link} onClose={() => setLink(null)} title="Link de activare" description="Trimite-l personal reprezentantului. Linkul este de unică folosință.">
-        <Input readOnly value={link ?? ""} onFocus={(e) => e.currentTarget.select()} />
-        <div className="mt-3 flex justify-end"><Button onClick={async () => { await navigator.clipboard.writeText(link ?? ""); toast.success("Link copiat."); }}>Copiază linkul</Button></div>
-      </Modal>
     </div>
   );
 }

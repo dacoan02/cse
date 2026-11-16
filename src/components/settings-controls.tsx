@@ -1,10 +1,9 @@
 "use client";
 import { useState } from "react";
-import { ModalForm, Modal } from "@/components/modal";
+import { ModalForm } from "@/components/modal";
 import { ActionButton, ConfirmAction } from "@/components/confirm-action";
 import { ActionForm, SubmitButton } from "@/components/action-form";
-import { Button, Checkbox, Field, Input, Select } from "@/components/ui";
-import { useToast } from "@/components/toast";
+import { Checkbox, Field, Input, Select } from "@/components/ui";
 import * as S from "@/app/actions/settings";
 import { CONFIGURABLE_PERMS } from "@/lib/permissions";
 import { hasPerm } from "@/lib/permissions";
@@ -12,17 +11,16 @@ import type { Profile } from "@/lib/types";
 
 export function InviteLeaderButton() {
   return (
-    <ModalForm trigger="Invită un membru al conducerii" title="Cont nou pentru conducere" description="Persoana primește un e-mail pentru a-și seta parola. Drepturile suplimentare se configurează după invitație." action={S.inviteLeaderAction} submitLabel="Trimite invitația">
+    <ModalForm trigger="Invită un membru al conducerii" title="Cont nou pentru conducere" description="Setezi parola inițială; persoana primește datele de acces pe e-mail și o poate schimba din Setări. Drepturile suplimentare se configurează după creare." action={S.inviteLeaderAction} submitLabel="Creează contul">
       <Field label="Nume și prenume" htmlFor="il-n" required><Input id="il-n" name="full_name" required /></Field>
       <Field label="Adresa de e-mail" htmlFor="il-e" required><Input id="il-e" name="email" type="email" required /></Field>
+      <Field label="Parola inițială" htmlFor="il-p" hint="Minim 8 caractere."><Input id="il-p" name="password" type="text" autoComplete="off" minLength={8} required /></Field>
       <Field label="Rol" htmlFor="il-r" hint="Pot exista mai mulți vicepreședinți."><Select id="il-r" name="role" defaultValue="vicepresedinte"><option value="vicepresedinte">Vicepreședinte</option><option value="secretar">Secretar executiv</option></Select></Field>
     </ModalForm>
   );
 }
 
 export function LeaderRow({ p, isSelf }: { p: Profile; isSelf: boolean }) {
-  const toast = useToast();
-  const [link, setLink] = useState<string | null>(null);
   const editable = p.role !== "presedinte";
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -32,15 +30,14 @@ export function LeaderRow({ p, isSelf }: { p: Profile; isSelf: boolean }) {
           <div className="grid gap-2 sm:grid-cols-2">{CONFIGURABLE_PERMS.map((c) => (
             <Checkbox key={c.perm} name="perms" value={c.perm} defaultChecked={hasPerm(p, c.perm)} label={<><span className="font-medium">{c.label}</span><br /><span className="text-xs text-muted">{c.hint}</span></>} />))}</div>
         </ModalForm>)}
-      {editable && <ActionButton size="sm" variant="ghost" action={() => S.resendLeaderAccessAction(p.id, "email")}>Retrimite acces</ActionButton>}
-      {editable && <Button size="sm" variant="ghost" onClick={async () => { const r = await S.resendLeaderAccessAction(p.id, "link"); if (r.ok) setLink(r.data?.link ?? null); else toast.error(r.error); }}>Link de activare</Button>}
+      {editable && (
+        <ModalForm trigger="Resetează parola" triggerVariant="ghost" triggerSize="sm" title={`Parolă nouă pentru ${p.full_name}`} submitLabel="Salvează și trimite e-mail" description={`Datele de acces se trimit la ${p.email}.`} action={S.resendLeaderAccessAction.bind(null, p.id)}>
+          <Field label="Parola nouă" htmlFor={`lp-${p.id}`} hint="Minim 8 caractere."><Input id={`lp-${p.id}`} name="password" type="text" autoComplete="off" minLength={8} required /></Field>
+        </ModalForm>
+      )}
       {editable && !isSelf && (p.is_active
         ? <ConfirmAction size="sm" triggerVariant="ghost" action={S.setProfileActiveAction.bind(null, p.id, false)} title="Dezactivează contul" description={`${p.full_name} nu se va mai putea autentifica. Istoricul acțiunilor rămâne păstrat.`} confirmLabel="Dezactivează">Dezactivează</ConfirmAction>
         : <ActionButton size="sm" variant="ghost" action={() => S.setProfileActiveAction(p.id, true)}>Reactivează</ActionButton>)}
-      <Modal open={!!link} onClose={() => setLink(null)} title="Link de activare" description="Trimite-l personal. Este de unică folosință.">
-        <Input readOnly value={link ?? ""} onFocus={(e) => e.currentTarget.select()} />
-        <div className="mt-3 flex justify-end"><Button onClick={async () => { await navigator.clipboard.writeText(link ?? ""); toast.success("Link copiat."); }}>Copiază linkul</Button></div>
-      </Modal>
     </div>
   );
 }

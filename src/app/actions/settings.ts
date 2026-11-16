@@ -1,6 +1,6 @@
 "use server";
 import { ActionError, changed, optStr, requireStr, runAction, str, unwrap, type ActionResult } from "@/lib/action";
-import { provisionAccount } from "@/lib/accounts";
+import { accessMessage, provisionAccount } from "@/lib/accounts";
 import { CONFIGURABLE_PERMS } from "@/lib/permissions";
 
 function needPresident(s: { isPresident: boolean }) { if (!s.isPresident) throw new ActionError("Doar președintele poate efectua această acțiune."); }
@@ -62,8 +62,8 @@ export async function inviteLeaderAction(fd: FormData): Promise<ActionResult> {
       const { count } = await ctx.supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "secretar").eq("is_active", true);
       if ((count ?? 0) > 0) throw new ActionError("Există deja un secretar executiv activ. Dezactivează contul existent sau schimbă-i rolul mai întâi.");
     }
-    await provisionAccount(ctx, email, name, role as "secretar" | "vicepresedinte", "email");
-    return { ok: true, message: `Invitația a fost trimisă la ${email}.` };
+    const { emailed } = await provisionAccount(ctx, email, name, role as "secretar" | "vicepresedinte", str(fd, "password"));
+    return { ok: true, message: accessMessage(email, emailed) };
   });
 }
 export async function updateLeaderAction(profileId: string, fd: FormData): Promise<ActionResult> {
@@ -84,12 +84,12 @@ export async function setProfileActiveAction(profileId: string, active: boolean)
     return { ok: true, message: active ? "Contul a fost reactivat." : "Contul a fost dezactivat. Istoricul a fost păstrat." };
   });
 }
-export async function resendLeaderAccessAction(profileId: string, mode: "email" | "link"): Promise<ActionResult<{ link: string | null }>> {
-  return runAction<{ link: string | null }>(async (ctx) => {
+export async function resendLeaderAccessAction(profileId: string, fd: FormData): Promise<ActionResult> {
+  return runAction(async (ctx) => {
     needPresident(ctx.session);
     const p = unwrap(await ctx.supabase.from("profiles").select("email,full_name,role").eq("id", profileId).single()) as { email: string; full_name: string; role: "secretar" | "vicepresedinte" };
-    const { link } = await provisionAccount(ctx, p.email, p.full_name, p.role, mode);
-    return { ok: true, message: mode === "email" ? "Linkul de acces a fost trimis." : "Link generat.", data: { link } };
+    const { emailed } = await provisionAccount(ctx, p.email, p.full_name, p.role, str(fd, "password"));
+    return { ok: true, message: accessMessage(p.email, emailed) };
   });
 }
 
