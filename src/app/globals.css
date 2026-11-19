@@ -60,3 +60,8 @@ dialog[open] { animation: pop .15s ease-out; }
   aside, header[data-app-header], .no-print { display: none !important; }
   body { background: white; }
 }
+
+/* iPhone: câmpurile sub 16px fac Safari să mărească pagina la atingere */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+}
