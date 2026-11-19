@@ -11,7 +11,7 @@ async function siteUrl() {
   return `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
 }
 
-const ROLE_LABEL: Record<string, string> = { presedinte: "Președinte", secretar: "Secretar executiv", vicepresedinte: "Vicepreședinte", reprezentant: "Elev reprezentant" };
+const ROLE_LABEL: Record<string, string> = { presedinte: "Președinte", secretar: "Secretar executiv", vicepresedinte: "Vicepreședinte", reprezentant: "Elev reprezentant", director: "Director", consilier: "Consilier educativ" };
 
 export function checkPassword(password: string) {
   if (password.length < 8) throw new ActionError("Parola trebuie să aibă cel puțin 8 caractere.");

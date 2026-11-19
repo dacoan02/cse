@@ -71,8 +71,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               </ActionForm>
             </Card>)}
           {hasVoted && v.status === "deschis" && <Alert tone="success">Ai votat. Mulțumim pentru participare.</Alert>}
-          {!eligible && !s.isLeadership && <Alert tone="info">Nu ai drept de vot în acest vot.</Alert>}
-          {eligible === false && s.isLeadership && v.status === "deschis" && <Alert tone="info">Nu ești în lista persoanelor eligibile, dar poți urmări votul.</Alert>}
+          {!eligible && !s.canFollow && <Alert tone="info">Nu ai drept de vot în acest vot.</Alert>}
+          {eligible === false && s.canFollow && v.status === "deschis" && <Alert tone="info">Nu ești în lista persoanelor eligibile, dar poți urmări votul.</Alert>}
           {v.status === "programat" && <Alert tone="info">Votul începe pe {formatDateTime(v.starts_at)}.</Alert>}
 
           {tally && (

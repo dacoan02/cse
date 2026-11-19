@@ -27,7 +27,7 @@ async function fails(text, params) {
 }
 
 await db.exec(sql("mock_supabase.sql"));
-for (const f of ["001_schema.sql", "002_functions.sql", "003_rls.sql", "004_announcement_files.sql"]) {
+for (const f of ["001_schema.sql", "002_functions.sql", "003_rls.sql", "004_announcement_files.sql", "005_observers.sql"]) {
   const migration = join(here, "..", "migrations", f);
   await db.exec(readFileSync(migration, "utf8"));
 }
@@ -42,12 +42,14 @@ const U = {
   rep2: "00000000-0000-0000-0000-000000000012",
   rep3: "00000000-0000-0000-0000-000000000013",
   other: "00000000-0000-0000-0000-000000000099",
+  dir: "00000000-0000-0000-0000-000000000021",
+  cons: "00000000-0000-0000-0000-000000000022",
 };
 await asAdmin();
 const [inst] = await q("insert into institutions (name) values ('Liceul Test') returning id");
 const [inst2] = await q("insert into institutions (name) values ('Alt Liceu') returning id");
 const [year] = await q("insert into school_years (institution_id,label) values ($1,'2026–2027') returning id", [inst.id]);
-const roles = [["pres","presedinte"],["sec","secretar"],["vp","vicepresedinte"],["rep1","reprezentant"],["rep2","reprezentant"],["rep3","reprezentant"]];
+const roles = [["pres","presedinte"],["sec","secretar"],["vp","vicepresedinte"],["rep1","reprezentant"],["rep2","reprezentant"],["rep3","reprezentant"],["dir","director"],["cons","consilier"]];
 for (const [k, r] of roles) {
   await q("insert into auth.users (id,email) values ($1,$2)", [U[k], k + "@test.ro"]);
   await q("insert into profiles (id,institution_id,full_name,role) values ($1,$2,$3,$4)", [U[k], inst.id, "Nume " + k, r]);
@@ -292,6 +294,48 @@ await q("update meetings set starts_at = now() - interval '1 minute' where id=$1
 ok("reminderul de la ora începerii se trimite o singură dată",
   (await q("select send_due_reminders() n"))[0].n === 1 && (await q("select send_due_reminders() n"))[0].n === 0);
 ok("reminderul ajunge la participanți", (await q("select * from notifications where type='meeting_reminder'")).length >= 3);
+
+
+// ---------- Director și consilier educativ (migrarea 005) ----------
+console.log("Observatori: director și consilier educativ");
+await asUser(U.pres);
+const [mo] = await q("insert into meetings (title, starts_at) values ('Ședință observatori', now() + interval '3 days') returning id");
+await asUser(U.dir);
+ok("directorul nu vede o ședință ciornă", (await q("select 1 from meetings where id=$1", [mo.id])).length === 0);
+await asUser(U.pres);
+await q("select set_meeting_recipients($1, true)", [mo.id]);
+await q("select publish_meeting($1)", [mo.id]);
+await q("insert into documents (title,category,storage_path,file_name,uploaded_by,visibility,meeting_id) values ('PV','proces_verbal','p/pv.pdf','pv.pdf',$1,'toti',$2)", [U.pres, mo.id]);
+await q("insert into documents (title,category,storage_path,file_name,uploaded_by,visibility) values ('Intern','altele','p/i.pdf','i.pdf',$1,'restrans')", [U.pres]);
+for (const k of ["dir", "cons"]) {
+  await asUser(U[k]);
+  ok(k + ": vede ședința publicată și cvorumul ei", (await q("select q_total,q_required from meetings where id=$1", [mo.id])).length === 1);
+  ok(k + ": vede lista de prezență", (await q("select 1 from meeting_participants where meeting_id=$1", [mo.id])).length > 0);
+  ok(k + ": vede documentul ședinței, nu și cel restrâns", (await q("select title from documents where title in ('PV','Intern')")).map(r => r.title).join() === "PV");
+  ok(k + ": nu vede sesizările", (await q("select 1 from feedback_items")).length === 0);
+  ok(k + ": nu vede măsurile administrative", (await q("select 1 from admin_measures")).length === 0);
+  ok(k + ": nu vede jurnalul de audit", (await q("select 1 from audit_log")).length === 0);
+  ok(k + ": nu poate crea ședințe", !!(await fails("insert into meetings (title, starts_at) values ('x', now())")));
+  ok(k + ": nu poate crea măsuri", !!(await fails("insert into admin_measures (representative_id,kind,reason,created_by) values ((select id from representatives limit 1),'mustrare','x',$1)", [U[k]])));
+  ok(k + ": nu poate încărca documente", !!(await fails("insert into documents (title,category,storage_path,file_name,uploaded_by,visibility) values ('x','altele','p/x','x',$1,'toti')", [U[k]])));
+  ok(k + ": nu își poate schimba rolul", !!(await fails("update profiles set role='presedinte' where id=$1", [U[k]])));
+  ok(k + ": nu poate crea vot", !!(await fails("select create_vote('{}'::jsonb)")));
+  ok(k + ": has_perm este fals pentru orice drept", (await q("select has_perm('manage_meetings') a, has_perm('view_feedback') b, has_perm('view_statistics') c"))[0].a === false);
+}
+await asUser(U.pres);
+await q("update profiles set permissions='{\"manage_meetings\":true}'::jsonb where id=$1", [U.dir]);
+await asUser(U.dir);
+ok("chiar și cu drepturi suprascrise, directorul nu poate scrie", !!(await fails("insert into meetings (title, starts_at) values ('x', now())")) && (await q("select has_perm('manage_meetings') a"))[0].a === false);
+await asUser(U.pres);
+const [{ create_vote: vid }] = await q(
+  `select create_vote(jsonb_build_object('title','Vot toți','question','Ok?','vote_type','da_nu_abtinere','is_secret', true, 'show_interim', true,
+     'starts_at', now() - interval '1 minute', 'ends_at', now() + interval '1 day', 'eligible_scope','toti'))`);
+ok("observatorii nu sunt eligibili la vot, deși scope=toți", (await q("select 1 from vote_eligible where vote_id=$1 and profile_id in ($2,$3)", [vid, U.dir, U.cons])).length === 0);
+await asUser(U.dir);
+ok("directorul vede votul și rezultatele (tally)", (await q("select 1 from votes where id=$1", [vid])).length === 1 && (await q("select vote_tally($1) t", [vid]))[0].t.eligible >= 3);
+ok("directorul nu poate vota", !!(await fails("select cast_vote($1,(select id from vote_options where vote_id=$1 limit 1))", [vid])));
+await asAdmin();
+ok("observatorii nu primesc notificări de tip conducere", (await q("select count(*)::int n from notifications where user_id in ($1,$2) and type='announcement'", [U.dir, U.cons]))[0].n === 0);
 
 // ---------- Anul școlar nou ----------
 await asUser(U.pres);

@@ -81,7 +81,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
                 <div><p className="text-lg font-semibold">{next.title}</p>
                   <p className="mt-1 flex items-center gap-1.5 text-sm text-muted"><Clock className="h-4 w-4" aria-hidden />{formatDateTime(next.starts_at)} · {relativeTime(next.starts_at)} · <Badge>{MEETING_TYPE_LABEL[next.meeting_type]}</Badge></p>
                   {next.reason && <p className="mt-2 text-sm">{next.reason}</p>}</div>
-                {s.isLeadership && <div className="rounded-lg bg-surface2 p-4">
+                {s.canFollow && <div className="rounded-lg bg-surface2 p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><QuorumBadge met={next.q_met} large /><span className="text-sm text-muted">{next.q_present} prezenți · {next.q_required} necesari · {next.q_total} reprezentanți activi</span></div>
                   <ProgressBar value={pct(next.q_present, next.q_total)} label="Prezență confirmată" tone={next.q_met ? "ok" : "warn"} />
                   <p className="mt-2 text-xs text-muted">{next.q_present} confirmați · {next.q_absent} absenți · {next.q_pending} nu au răspuns</p></div>}
@@ -94,8 +94,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
               <div><Link href={`/voturi/${v.id}`} className="font-medium text-brand hover:underline">{v.title}</Link><p className="text-xs text-muted">Se încheie {relativeTime(v.ends_at)}</p></div>
               {voted.has(v.id) ? <Badge tone="ok">Ai votat</Badge> : <Link href={`/voturi/${v.id}`} className={buttonClass("primary", "sm")}>Votează</Link>}</li>))}</ul></Card>}
 
-          <Card><CardHeader title="Anunțuri" action={<Link href="/anunturi" className="text-sm text-brand hover:underline">Toate →</Link>} />
-            {(annR.data ?? []).length === 0 ? <p className="p-5 text-sm text-muted">Niciun anunț.</p> : <ul className="divide-y divide-line">{(annR.data ?? []).map((a: any) => <li key={a.id} className="px-5 py-3 text-sm"><p className="font-medium">{a.title}</p><p className="line-clamp-2 text-muted">{a.content}</p><p className="mt-1 text-xs text-muted">{relativeTime(a.published_at)}</p></li>)}</ul>}</Card>
+          {!s.isObserver && <Card><CardHeader title="Anunțuri" action={<Link href="/anunturi" className="text-sm text-brand hover:underline">Toate →</Link>} />
+            {(annR.data ?? []).length === 0 ? <p className="p-5 text-sm text-muted">Niciun anunț.</p> : <ul className="divide-y divide-line">{(annR.data ?? []).map((a: any) => <li key={a.id} className="px-5 py-3 text-sm"><p className="font-medium">{a.title}</p><p className="line-clamp-2 text-muted">{a.content}</p><p className="mt-1 text-xs text-muted">{relativeTime(a.published_at)}</p></li>)}</ul>}</Card>}
 
           {s.isPresident || s.can("view_audit") ? (
             <Card><CardHeader title="Activitate recentă" subtitle="Cele mai importante acțiuni din platformă" action={<Link href="/istoric" className="text-sm text-brand hover:underline">Jurnal complet →</Link>} />
@@ -107,7 +107,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
           <Card><CardHeader title="Notificări necitite" action={<Link href="/notificari" className="text-sm text-brand hover:underline">Toate →</Link>} />
             {unreadN.length === 0 ? <p className="p-5 text-sm text-muted">Ești la zi. Nicio notificare necitită.</p> : <ul className="divide-y divide-line">{unreadN.map((n: any) => <li key={n.id} className="px-5 py-3 text-sm"><Link href={n.link ?? "/notificari"} className="font-medium hover:text-brand">{n.title}</Link><p className="text-xs text-muted">{relativeTime(n.created_at)}</p></li>)}</ul>}</Card>
 
-          {myParts.length > 0 || s.profile.role !== "presedinte" ? <Card><CardHeader title="Participarea mea" subtitle="La ședințele desfășurate" />
+          {!s.isObserver && (myParts.length > 0 || s.profile.role !== "presedinte") ? <Card><CardHeader title="Participarea mea" subtitle="La ședințele desfășurate" />
             <div className="space-y-3 p-5 text-sm">{myParts.length === 0 ? <p className="text-muted">Nu ai încă ședințe desfășurate.</p> : <>
               <div className="flex items-end justify-between"><span className="text-3xl font-semibold tabular-nums">{pct(myPresent, myParts.length)}%</span><span className="text-muted">{myPresent} prezențe din {myParts.length}</span></div>
               <ProgressBar value={pct(myPresent, myParts.length)} label="Participarea mea" tone="ok" /><p className="text-xs text-muted">{myAbsent} absențe declarate · {myParts.length - myPresent - myAbsent} fără răspuns</p>

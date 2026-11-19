@@ -55,14 +55,14 @@ export async function inviteLeaderAction(fd: FormData): Promise<ActionResult> {
   return runAction(async (ctx) => {
     needPresident(ctx.session);
     const role = str(fd, "role");
-    if (!["secretar", "vicepresedinte"].includes(role)) throw new ActionError("Rol invalid.");
+    if (!["secretar", "vicepresedinte", "director", "consilier"].includes(role)) throw new ActionError("Rol invalid.");
     const email = requireStr(fd, "email", "E-mail").toLowerCase();
     const name = requireStr(fd, "full_name", "Numele");
     if (role === "secretar") {
       const { count } = await ctx.supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "secretar").eq("is_active", true);
       if ((count ?? 0) > 0) throw new ActionError("Există deja un secretar executiv activ. Dezactivează contul existent sau schimbă-i rolul mai întâi.");
     }
-    const { emailed } = await provisionAccount(ctx, email, name, role as "secretar" | "vicepresedinte", str(fd, "password"));
+    const { emailed } = await provisionAccount(ctx, email, name, role as "secretar" | "vicepresedinte" | "director" | "consilier", str(fd, "password"));
     return { ok: true, message: accessMessage(email, emailed) };
   });
 }
@@ -70,6 +70,9 @@ export async function updateLeaderAction(profileId: string, fd: FormData): Promi
   return runAction(async ({ supabase, session }) => {
     needPresident(session);
     const role = str(fd, "role");
+    if (!["secretar", "vicepresedinte"].includes(role)) throw new ActionError("Rol invalid.");
+    const { data: target } = await supabase.from("profiles").select("role").eq("id", profileId).maybeSingle();
+    if (!target || !["secretar", "vicepresedinte"].includes(target.role)) throw new ActionError("Rolul acestui cont nu se modifică de aici.");
     const perms: Record<string, boolean> = {};
     const checked = new Set(fd.getAll("perms").map(String));
     for (const p of CONFIGURABLE_PERMS) perms[p.perm] = checked.has(p.perm);
@@ -87,7 +90,7 @@ export async function setProfileActiveAction(profileId: string, active: boolean)
 export async function resendLeaderAccessAction(profileId: string, fd: FormData): Promise<ActionResult> {
   return runAction(async (ctx) => {
     needPresident(ctx.session);
-    const p = unwrap(await ctx.supabase.from("profiles").select("email,full_name,role").eq("id", profileId).single()) as { email: string; full_name: string; role: "secretar" | "vicepresedinte" };
+    const p = unwrap(await ctx.supabase.from("profiles").select("email,full_name,role").eq("id", profileId).single()) as { email: string; full_name: string; role: "secretar" | "vicepresedinte" | "director" | "consilier" };
     const { emailed } = await provisionAccount(ctx, p.email, p.full_name, p.role, str(fd, "password"));
     return { ok: true, message: accessMessage(p.email, emailed) };
   });

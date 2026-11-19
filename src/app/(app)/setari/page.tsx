@@ -53,7 +53,7 @@ export default async function Page() {
         </>}
 
         {s.isLeadership && <Card className="lg:col-span-2">
-          <CardHeader title="Conducerea" subtitle={s.isPresident ? "Conturile conducerii și drepturile delegate. Poți avea oricâți vicepreședinți." : "Membrii conducerii Consiliului"} action={s.isPresident && <InviteLeaderButton />} />
+          <CardHeader title={s.isObserver ? "Conducerea" : "Conducere și observatori"} subtitle={s.isPresident ? "Conturile conducerii și drepturile delegate, plus directorul și consilierul educativ (acces doar de citire)." : "Membrii conducerii Consiliului"} action={s.isPresident && <InviteLeaderButton />} />
           <ul className="divide-y divide-line">{((leaders ?? []) as Profile[]).map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
               <div><p className="font-medium">{p.full_name} {!p.is_active && <Badge tone="bad">dezactivat</Badge>}</p><p className="text-xs text-muted">{ROLE_LABEL[p.role]} · {p.email}</p></div>

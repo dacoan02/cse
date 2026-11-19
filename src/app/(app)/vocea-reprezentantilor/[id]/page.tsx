@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
-import { requireSession } from "@/lib/auth";
+import { requireNotObserver } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMembers, nameMap, getClasses } from "@/lib/data";
 import { Badge, Card, CardHeader, DemoBadge, Field, PageHeader, Select, Textarea, Alert } from "@/components/ui";
@@ -15,7 +15,7 @@ import type { DocumentRow, FeedbackItem } from "@/lib/types";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const s = await requireSession();
+  const s = await requireNotObserver();
   const supabase = await createClient();
   const { data } = await supabase.from("feedback_items").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();

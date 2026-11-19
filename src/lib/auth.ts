@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { hasPerm } from "@/lib/permissions";
+import { hasPerm, isLeadership, isObserver } from "@/lib/permissions";
 import type { Institution, Perm, Profile, SchoolYear } from "@/lib/types";
 
 export interface Session {
@@ -13,6 +13,9 @@ export interface Session {
   year: SchoolYear | null;
   isPresident: boolean;
   isLeadership: boolean;
+  isObserver: boolean;
+  /** Conducere sau observator: vede cvorumul, prezențele și situația ședințelor. */
+  canFollow: boolean;
   can: (perm: Perm) => boolean;
 }
 
@@ -40,7 +43,9 @@ export const getSession = cache(async (): Promise<Session | null> => {
     institution: institution as Institution,
     year: (year as SchoolYear | null) ?? null,
     isPresident: p.role === "presedinte",
-    isLeadership: p.role !== "reprezentant",
+    isLeadership: isLeadership(p.role),
+    isObserver: isObserver(p.role),
+    canFollow: isLeadership(p.role) || isObserver(p.role),
     can: (perm: Perm) => hasPerm(p, perm),
   };
 });
@@ -62,5 +67,12 @@ export async function requirePerm(perm: Perm): Promise<Session> {
 export async function requirePresident(): Promise<Session> {
   const session = await requireSession();
   if (!session.isPresident) redirect("/dashboard?acces=refuzat");
+  return session;
+}
+
+/** Pentru pagini care nu sunt destinate directorului și consilierului educativ. */
+export async function requireNotObserver(): Promise<Session> {
+  const session = await requireSession();
+  if (session.isObserver) redirect("/dashboard?acces=refuzat");
   return session;
 }

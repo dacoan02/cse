@@ -14,13 +14,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const nav: (NavItem | false)[] = [
     { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/adunarea-generala", label: "Adunarea Generală", icon: "Users" },
+    !s.isObserver && { href: "/adunarea-generala", label: "Adunarea Generală", icon: "Users" },
     { href: "/sedinte", label: "Ședințe", icon: "CalendarDays" },
     { href: "/calendar", label: "Calendar", icon: "Calendar" },
     { href: "/voturi", label: "Voturi și decizii", icon: "Vote" },
-    { href: "/vocea-reprezentantilor", label: "Vocea reprezentanților", icon: "MessageSquareText" },
+    !s.isObserver && { href: "/vocea-reprezentantilor", label: "Vocea reprezentanților", icon: "MessageSquareText" },
     { href: "/proiecte", label: "Proiecte și activități", icon: "FolderKanban" },
-    { href: "/anunturi", label: "Anunțuri", icon: "Megaphone" },
+    !s.isObserver && { href: "/anunturi", label: "Anunțuri", icon: "Megaphone" },
     { href: "/documente", label: "Documente și arhivă", icon: "FileText" },
     s.can("view_statistics") && { href: "/statistici", label: "Statistici", icon: "BarChart3" },
     s.isPresident && { href: "/reprezentanti", label: "Managementul reprezentanților", icon: "ShieldAlert" },

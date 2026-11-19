@@ -22,14 +22,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { data } = await supabase.from("meetings").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();
   const m = data as Meeting;
-  const [agendaR, partsR, docsR, votesR, snapR, members] = await Promise.all([
+  const [agendaR, partsR, docsR, votesR, snapR, members, dirR] = await Promise.all([
     supabase.from("agenda_items").select("*").eq("meeting_id", id).order("position"),
     supabase.from("meeting_participants").select("id,status,responded_at,profile_id,representative_id,representatives(full_name,classes(name))").eq("meeting_id", id),
     supabase.from("documents").select("*").eq("meeting_id", id).order("created_at"),
     supabase.from("votes").select("*").eq("meeting_id", id).order("starts_at"),
     supabase.from("meeting_attendance_snapshot").select("*").eq("meeting_id", id).order("full_name"),
     getMembers(supabase),
+    supabase.from("assembly_directory").select("profile_id,full_name,class_name"),
   ]);
+  const dir = new Map(((dirR.data ?? []) as any[]).map((d) => [d.profile_id as string, d]));
   const agenda = agendaR.data ?? [];
   const parts = (partsR.data ?? []) as any[];
   const docs = (docsR.data ?? []) as DocumentRow[];
@@ -39,7 +41,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const me = parts.find((p) => p.profile_id === s.userId);
   const open = m.status === "published" || m.status === "in_progress";
   const canManage = s.can("manage_meetings");
-  const showQuorum = m.status !== "draft" && m.status !== "cancelled" && (s.isLeadership || !!me);
+  const showQuorum = m.status !== "draft" && m.status !== "cancelled" && (s.canFollow || !!me);
   const agendaText = agenda.map((a: any) => a.title).join("\n");
 
   return (
@@ -115,7 +117,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      {s.isLeadership && m.status !== "draft" && m.status !== "cancelled" && (
+      {s.canFollow && m.status !== "draft" && m.status !== "cancelled" && (
         <Card className="mt-6">
           <CardHeader title={m.status === "held" ? "Situația finală a prezenței" : "Participanți"} subtitle={m.status === "held" ? "Păstrată în arhivă la încheierea ședinței." : "Se actualizează în timp real."} />
           <Table>
@@ -123,7 +125,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <tbody>
               {(m.status === "held" && snap.length > 0
                 ? snap.map((p, i) => ({ key: p.id, i, name: p.full_name, cls: p.class_name, status: p.status, pid: null as string | null }))
-                : parts.map((p, i) => ({ key: p.id, i, name: p.representatives?.full_name ?? names[p.profile_id] ?? "—", cls: p.representatives?.classes?.name ?? "Conducere", status: p.status, pid: p.id as string }))
+                : parts.map((p, i) => ({ key: p.id, i, name: p.representatives?.full_name ?? dir.get(p.profile_id)?.full_name ?? names[p.profile_id] ?? "—", cls: p.representatives?.classes?.name ?? dir.get(p.profile_id)?.class_name ?? "Conducere", status: p.status, pid: p.id as string }))
                   .sort((a, b) => a.name.localeCompare(b.name, "ro"))
               ).map((p, i) => (
                 <tr key={p.key}>

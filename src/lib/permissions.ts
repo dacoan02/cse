@@ -12,12 +12,14 @@ export function permDefault(role: Role, perm: Perm): boolean {
 
 export function hasPerm(profile: Pick<Profile, "role" | "permissions">, perm: Perm): boolean {
   if (profile.role === "presedinte") return true;
-  if (profile.role === "reprezentant") return false;
+  if (profile.role === "reprezentant" || isObserver(profile.role)) return false;
   const override = profile.permissions?.[perm];
   return typeof override === "boolean" ? override : permDefault(profile.role, perm);
 }
 
-export function isLeadership(role: Role) { return role !== "reprezentant"; }
+export function isLeadership(role: Role) { return role === "presedinte" || role === "secretar" || role === "vicepresedinte"; }
+/** Director și consilier educativ: pot urmări activitatea Consiliului, fără drept de scriere. */
+export function isObserver(role: Role) { return role === "director" || role === "consilier"; }
 
 /** Drepturi configurabile de președinte pentru conducere (afișate în Setări). */
 export const CONFIGURABLE_PERMS: { perm: Perm; label: string; hint: string }[] = [

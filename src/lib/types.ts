@@ -1,5 +1,5 @@
 // Tipuri scrise manual, oglindind schema din supabase/migrations/001_schema.sql
-export type Role = "presedinte" | "secretar" | "vicepresedinte" | "reprezentant";
+export type Role = "presedinte" | "secretar" | "vicepresedinte" | "reprezentant" | "director" | "consilier";
 
 export type Perm =
   | "manage_meetings" | "manage_attendance" | "edit_agenda" | "manage_documents" | "manage_votes"

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MessageSquareText } from "lucide-react";
-import { requireSession } from "@/lib/auth";
+import { requireNotObserver } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getClasses } from "@/lib/data";
 import { Badge, Button, Card, DemoBadge, EmptyState, Input, PageHeader, Select, Table, Td, Th, buttonClass } from "@/components/ui";
@@ -13,7 +13,7 @@ export const metadata = { title: "Vocea reprezentanților" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const s = await requireSession();
+  const s = await requireNotObserver();
   const supabase = await createClient();
   const seesAll = s.can("view_feedback");
   const classes = await getClasses(supabase, s.year?.id);

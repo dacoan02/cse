@@ -2,13 +2,13 @@
 
 Aplicație web (Next.js 16 + Supabase) pentru conducerea și Adunarea Generală a unui Consiliu Școlar al Elevilor: ședințe, prezență și cvorum automat, voturi, „Vocea reprezentanților”, proiecte, calendar, anunțuri, documente, statistici/rapoarte, jurnal de audit și măsuri administrative.
 
-Interfața este în limba română. Rolurile (Președinte, Secretar executiv, Vicepreședinți, Elev reprezentant) se atribuie doar prin invitație.
+Interfața este în limba română. Rolurile (Președinte, Secretar executiv, Vicepreședinți, Elev reprezentant, Director, Consilier educativ) se atribuie doar de Președinte. Directorul și consilierul educativ au acces doar de citire: ședințe, prezențe, cvorum, documente, proiecte/activități/calendar și rezultatele voturilor.
 
 ## 1. Configurare Supabase
 
 1. Creează un proiect pe https://supabase.com.
 2. În **SQL Editor** rulează, în ordine, fișierele din `supabase/migrations/`:
-   `001_schema.sql`, `002_functions.sql`, `003_rls.sql`, `004_announcement_files.sql`.
+   `001_schema.sql`, `002_functions.sql`, `003_rls.sql`, `004_announcement_files.sql`, `005_observers.sql`.
    (Bucket-ul privat `documents` este creat de `003_rls.sql`.)
 3. **Authentication → URL Configuration**: setează *Site URL* la adresa aplicației și adaugă `…/auth/callback` la *Redirect URLs*.
 4. **Authentication → SMTP**: configurează un server de e-mail propriu pentru invitații și recuperarea parolei (serverul implicit Supabase are limite foarte mici).

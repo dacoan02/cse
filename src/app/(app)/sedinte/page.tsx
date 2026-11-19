@@ -44,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         action={s.can("manage_meetings") && tab === "viitoare" ? <Link href="/sedinte/nou" className={buttonClass()}>Programează o ședință</Link> : undefined} /> : (
         <Card>
           <Table>
-            <thead><tr><Th>Ședința</Th><Th>Data și ora</Th><Th>Tip</Th><Th>Stare</Th>{s.isLeadership && <Th>Cvorum</Th>}</tr></thead>
+            <thead><tr><Th>Ședința</Th><Th>Data și ora</Th><Th>Tip</Th><Th>Stare</Th>{s.canFollow && <Th>Cvorum</Th>}</tr></thead>
             <tbody>
               {rows.map((m) => (
                 <tr key={m.id} className="hover:bg-surface2/50">
@@ -53,7 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                   <Td>{formatDateTime(m.starts_at)}</Td>
                   <Td>{MEETING_TYPE_LABEL[m.meeting_type]}</Td>
                   <Td><Badge tone={MEETING_TONE[m.status]}>{MEETING_STATUS_LABEL[m.status]}</Badge></Td>
-                  {s.isLeadership && <Td>{m.status === "draft" || m.status === "cancelled" ? "—" : <div className="space-y-1"><QuorumBadge met={m.q_met} /><div className="text-xs text-muted">{m.q_present}/{m.q_required} necesari · {m.q_total} reprezentanți</div></div>}</Td>}
+                  {s.canFollow && <Td>{m.status === "draft" || m.status === "cancelled" ? "—" : <div className="space-y-1"><QuorumBadge met={m.q_met} /><div className="text-xs text-muted">{m.q_present}/{m.q_required} necesari · {m.q_total} reprezentanți</div></div>}</Td>}
                 </tr>
               ))}
             </tbody>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
-import { requireSession } from "@/lib/auth";
+import { requireNotObserver } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getClasses } from "@/lib/data";
 import { repParticipation } from "@/lib/stats";
@@ -14,7 +14,7 @@ export const metadata = { title: "Adunarea Generală" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ q?: string; clasa?: string; stare?: string; sort?: string }> }) {
   const sp = await searchParams;
-  const s = await requireSession();
+  const s = await requireNotObserver();
   const supabase = await createClient();
   const canManage = s.can("manage_representatives");
   const classes = await getClasses(supabase, s.year?.id);

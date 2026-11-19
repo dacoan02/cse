@@ -1,5 +1,5 @@
 import { Download, Megaphone, Pin } from "lucide-react";
-import { requireSession } from "@/lib/auth";
+import { requireNotObserver } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getMembers, nameMap } from "@/lib/data";
 import { Badge, Card, DemoBadge, EmptyState, PageHeader } from "@/components/ui";
@@ -12,7 +12,7 @@ import type { Announcement, DocumentRow } from "@/lib/types";
 export const metadata = { title: "Anunțuri" };
 
 export default async function Page() {
-  const s = await requireSession();
+  const s = await requireNotObserver();
   const supabase = await createClient();
   const [{ data }, { data: docs }, members] = await Promise.all([
     supabase.from("announcements").select("*").order("pinned", { ascending: false }).order("published_at", { ascending: false }).limit(100),

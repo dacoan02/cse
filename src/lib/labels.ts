@@ -1,5 +1,5 @@
 export const ROLE_LABEL: Record<string, string> = {
-  presedinte: "Președinte", secretar: "Secretar executiv", vicepresedinte: "Vicepreședinte", reprezentant: "Elev reprezentant",
+  presedinte: "Președinte", secretar: "Secretar executiv", vicepresedinte: "Vicepreședinte", reprezentant: "Elev reprezentant", director: "Director", consilier: "Consilier educativ",
 };
 export const ATTENDANCE_LABEL: Record<string, string> = {
   no_response: "Nu a răspuns", present: "Prezent", absent: "Absent", present_by_organizer: "Prezent (înregistrat de organizator)",

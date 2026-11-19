@@ -11,20 +11,21 @@ import type { Profile } from "@/lib/types";
 
 export function InviteLeaderButton() {
   return (
-    <ModalForm trigger="Invită un membru al conducerii" title="Cont nou pentru conducere" description="Setezi parola inițială; persoana primește datele de acces pe e-mail și o poate schimba din Setări. Drepturile suplimentare se configurează după creare." action={S.inviteLeaderAction} submitLabel="Creează contul">
+    <ModalForm trigger="Creează un cont nou" title="Cont nou: conducere, director sau consilier educativ" description="Setezi parola inițială; persoana primește datele de acces pe e-mail și o poate schimba din Setări. Drepturile suplimentare se configurează după creare." action={S.inviteLeaderAction} submitLabel="Creează contul">
       <Field label="Nume și prenume" htmlFor="il-n" required><Input id="il-n" name="full_name" required /></Field>
       <Field label="Adresa de e-mail" htmlFor="il-e" required><Input id="il-e" name="email" type="email" required /></Field>
       <Field label="Parola inițială" htmlFor="il-p" hint="Minim 8 caractere."><Input id="il-p" name="password" type="text" autoComplete="off" minLength={8} required /></Field>
-      <Field label="Rol" htmlFor="il-r" hint="Pot exista mai mulți vicepreședinți."><Select id="il-r" name="role" defaultValue="vicepresedinte"><option value="vicepresedinte">Vicepreședinte</option><option value="secretar">Secretar executiv</option></Select></Field>
+      <Field label="Rol" htmlFor="il-r" hint="Directorul și consilierul educativ pot doar urmări ședințele, prezențele, documentele, cvorumul, proiectele și rezultatele voturilor."><Select id="il-r" name="role" defaultValue="vicepresedinte"><option value="vicepresedinte">Vicepreședinte</option><option value="secretar">Secretar executiv</option><option value="director">Director (doar urmărește activitatea)</option><option value="consilier">Consilier educativ (doar urmărește activitatea)</option></Select></Field>
     </ModalForm>
   );
 }
 
 export function LeaderRow({ p, isSelf }: { p: Profile; isSelf: boolean }) {
   const editable = p.role !== "presedinte";
+  const observer = p.role === "director" || p.role === "consilier";
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {editable && (
+      {editable && !observer && (
         <ModalForm wide trigger="Rol și drepturi" triggerVariant="ghost" triggerSize="sm" title={`Drepturi: ${p.full_name}`} description="Bifează funcțiile delegate acestei persoane. Fără bifă, persoana le poate doar consulta (unde este cazul)." action={S.updateLeaderAction.bind(null, p.id)}>
           <Field label="Rol" htmlFor={`r-${p.id}`}><Select id={`r-${p.id}`} name="role" defaultValue={p.role}><option value="vicepresedinte">Vicepreședinte</option><option value="secretar">Secretar executiv</option></Select></Field>
           <div className="grid gap-2 sm:grid-cols-2">{CONFIGURABLE_PERMS.map((c) => (
